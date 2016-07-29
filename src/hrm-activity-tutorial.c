@@ -25,6 +25,39 @@ static ActivityState s_app_state = STATE_NOT_STARTED;
 
 static time_t s_start_time, s_end_time;
 
+static uint16_t s_curr_hr = 0;
+static uint16_t s_min_hr = 65535; // max uint16_t
+static uint16_t s_max_hr = 0;
+
+static uint32_t s_hr_samples = 0;
+static uint32_t s_hr_total = 0;
+
+int16_t get_min_hr() {
+  return s_min_hr;
+}
+
+int16_t get_max_hr() {
+  return s_max_hr;
+}
+
+int16_t get_avg_hr() {
+  if (s_hr_samples == 0) return 0;
+  return s_hr_total / s_hr_samples;
+}
+
+static void prv_on_health_data(HealthEventType type, void *context) {
+  // If the update was from the Heart Rate Monitor, update it
+  if (type == HealthEventHeartRateUpdate) {
+    s_curr_hr = (int16_t) health_service_peek_current_value(HealthMetricHeartRateBPM);
+
+    // Update our metrics
+    if (s_curr_hr < s_min_hr) s_min_hr = s_curr_hr;
+    if (s_curr_hr > s_max_hr) s_max_hr = s_curr_hr;
+    s_hr_samples++;
+    s_hr_total += s_curr_hr;
+  }
+}
+
 static void prv_on_activity_tick(struct tm *tick_time, TimeUnits units_changed) {
   // Update Time
   time_t diff = time(NULL) - s_start_time;
@@ -39,10 +72,8 @@ static void prv_on_activity_tick(struct tm *tick_time, TimeUnits units_changed) 
   text_layer_set_text(s_time_text_layer, s_time_buffer);
 
   // Update BPM
-  HealthValue hrmValue = health_service_peek_current_value(HealthMetricHeartRateBPM);
-
   static char s_hrm_buffer[8];
-  snprintf(s_hrm_buffer, sizeof(s_hrm_buffer), "%lu BPM", (uint32_t) hrmValue);
+  snprintf(s_hrm_buffer, sizeof(s_hrm_buffer), "%lu BPM", (uint32_t) s_curr_hr);
   text_layer_set_text(s_bpm_text_layer, s_hrm_buffer);
 }
 
@@ -58,6 +89,9 @@ static void prv_start_activity(void) {
 
   // Subscribe to tick handler to update display
   tick_timer_service_subscribe(SECOND_UNIT, prv_on_activity_tick);
+
+  // Subscribe to health handler
+  health_service_events_subscribe(prv_on_health_data, NULL);
 
   // Update UI
   text_layer_set_text(s_status_text_layer, END_ACTIVITY_STRING);
@@ -78,17 +112,8 @@ static void prv_end_activity(void) {
   // Unsubscribe from tick handler
   tick_timer_service_unsubscribe();
 
-
-  // Calcultate Metrics
-  uint32_t min_bpm = health_service_aggregate_averaged(HealthMetricHeartRateBPM,
-                                s_start_time, s_end_time,
-                                HealthAggregationMin, HealthServiceTimeScopeOnce);
-  uint32_t max_bpm = health_service_aggregate_averaged(HealthMetricHeartRateBPM,
-                                s_start_time, s_end_time,
-                                HealthAggregationMax, HealthServiceTimeScopeOnce);
-  uint32_t avg_bpm = health_service_aggregate_averaged(HealthMetricHeartRateBPM,
-                                s_start_time, s_end_time,
-                                HealthAggregationAvg, HealthServiceTimeScopeOnce);
+  // Unsubscribe from health handler
+  health_service_events_unsubscribe();
 
   // Update UI
   layer_set_hidden(text_layer_get_layer(s_status_text_layer), true);
@@ -107,15 +132,15 @@ static void prv_end_activity(void) {
   text_layer_set_text(s_total_time_text_layer, s_time_buffer);
 
   static char s_avg_bpm_buffer[16];
-  snprintf(s_avg_bpm_buffer, sizeof(s_avg_bpm_buffer), "Avg: %lu BPM", avg_bpm);
+  snprintf(s_avg_bpm_buffer, sizeof(s_avg_bpm_buffer), "Avg: %u BPM", get_avg_hr());
   text_layer_set_text(s_avg_bpm_text_layer, s_avg_bpm_buffer);
 
   static char s_max_bpm_buffer[16];
-  snprintf(s_max_bpm_buffer, sizeof(s_max_bpm_buffer), "Max: %lu BPM", max_bpm);
+  snprintf(s_max_bpm_buffer, sizeof(s_max_bpm_buffer), "Max: %u BPM", get_max_hr());
   text_layer_set_text(s_max_bpm_text_layer, s_max_bpm_buffer);
 
   static char s_min_bpm_buffer[16];
-  snprintf(s_min_bpm_buffer, sizeof(s_min_bpm_buffer), "Min: %lu BPM", min_bpm);
+  snprintf(s_min_bpm_buffer, sizeof(s_min_bpm_buffer), "Min: %u BPM", get_min_hr());
   text_layer_set_text(s_min_bpm_text_layer, s_min_bpm_buffer);
 
   layer_set_hidden(text_layer_get_layer(s_title_text_layer), false);
