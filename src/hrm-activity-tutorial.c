@@ -17,7 +17,6 @@ static TextLayer *s_bpm_text_layer;
 
 static TextLayer *s_title_text_layer;
 static TextLayer *s_total_time_text_layer;
-static TextLayer *s_steps_text_layer;
 static TextLayer *s_min_bpm_text_layer;
 static TextLayer *s_max_bpm_text_layer;
 static TextLayer *s_avg_bpm_text_layer;
@@ -81,9 +80,6 @@ static void prv_end_activity(void) {
 
 
   // Calcultate Metrics
-  uint32_t steps = health_service_aggregate_averaged(HealthMetricStepCount,
-                                s_start_time, s_end_time,
-                                HealthAggregationMin, HealthServiceTimeScopeOnce);
   uint32_t min_bpm = health_service_aggregate_averaged(HealthMetricHeartRateBPM,
                                 s_start_time, s_end_time,
                                 HealthAggregationMin, HealthServiceTimeScopeOnce);
@@ -110,11 +106,6 @@ static void prv_end_activity(void) {
   }
   text_layer_set_text(s_total_time_text_layer, s_time_buffer);
 
-  // Steps
-  static char s_steps_buffer[16];
-  snprintf(s_steps_buffer, sizeof(s_steps_buffer), "Steps: %lu", steps);
-  text_layer_set_text(s_steps_text_layer, s_steps_buffer);
-
   static char s_avg_bpm_buffer[16];
   snprintf(s_avg_bpm_buffer, sizeof(s_avg_bpm_buffer), "Avg: %lu BPM", avg_bpm);
   text_layer_set_text(s_avg_bpm_text_layer, s_avg_bpm_buffer);
@@ -129,7 +120,6 @@ static void prv_end_activity(void) {
 
   layer_set_hidden(text_layer_get_layer(s_title_text_layer), false);
   layer_set_hidden(text_layer_get_layer(s_total_time_text_layer), false);
-  layer_set_hidden(text_layer_get_layer(s_steps_text_layer), false);
   layer_set_hidden(text_layer_get_layer(s_avg_bpm_text_layer), false);
   layer_set_hidden(text_layer_get_layer(s_min_bpm_text_layer), false);
   layer_set_hidden(text_layer_get_layer(s_max_bpm_text_layer), false);
@@ -194,17 +184,11 @@ static void prv_window_load(Window *window) {
   layer_set_hidden(text_layer_get_layer(s_title_text_layer), true);
   layer_add_child(window_layer, text_layer_get_layer(s_title_text_layer));
 
-  // "Workout Summay" (Hidden)
+  // Total Time (Hidden)
   s_total_time_text_layer = text_layer_create(GRect(0, 35, bounds.size.w, 20));
   text_layer_set_text_alignment(s_total_time_text_layer, GTextAlignmentCenter);
   layer_set_hidden(text_layer_get_layer(s_total_time_text_layer), true);
   layer_add_child(window_layer, text_layer_get_layer(s_total_time_text_layer));
-
-  // Steps (Hidden)
-  s_steps_text_layer = text_layer_create(GRect(0, 60, bounds.size.w, 20));
-  text_layer_set_text_alignment(s_steps_text_layer, GTextAlignmentCenter);
-  layer_set_hidden(text_layer_get_layer(s_steps_text_layer), true);
-  layer_add_child(window_layer, text_layer_get_layer(s_steps_text_layer));
 
   // Avg BPM (Hidden)
   s_avg_bpm_text_layer = text_layer_create(GRect(0, 85, bounds.size.w, 20));
@@ -233,10 +217,9 @@ static void prv_window_unload(Window *window) {
   text_layer_destroy(s_bpm_text_layer);
 
   text_layer_destroy(s_title_text_layer);
-  text_layer_destroy(s_steps_text_layer);
-  text_layer_destroy(s_min_bpm_text_layer);
-  text_layer_destroy(s_max_bpm_text_layer);
   text_layer_destroy(s_avg_bpm_text_layer);
+  text_layer_destroy(s_max_bpm_text_layer);
+  text_layer_destroy(s_min_bpm_text_layer);
 }
 
 static void prv_init(void) {
