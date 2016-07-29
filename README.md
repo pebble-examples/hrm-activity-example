@@ -3,7 +3,11 @@
 This is an example Pebble watchapp that displays and tracks a user's heart rate
 during an activity.
 
-![](/images/screenshot1.png) ![](/images/screenshot2.png) ![](/images/screenshot3.png)
+<p align="center">
+  <img src="/images/screenshot1.png" alt="Screenshot 1">
+  <img src="/images/screenshot2.png" alt="Screenshot 2">
+  <img src="/images/screenshot3.png" alt="Screenshot 3">
+</p>
 
 **NOTE:** This example requires SDK 4.
 
